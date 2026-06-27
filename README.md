@@ -265,6 +265,7 @@ https://yourdomain.com/maprouter.php?route=[{"point":"Amsterdam"},{"point":"Utre
 | 2026-06-18 | `mapbuilder.php`: added "Import URL" section — paste any maprouter.php URL to reverse-populate all routes, locations, and options in the sidebar |
 | 2026-06-18 | Added `&title=` parameter — sets the browser tab title; supported in both `maprouter.php` and `mapbuilder.php` |
 | 2026-06-18 | `mapbuilder.php`: fixed URL import — `+` in query strings now correctly decoded as a space |
+| 2026-06-27 | `mapbuilder.php`: added "Export as KML" button — geocodes all stops via Nominatim and downloads a `.kml` file with placemarks and route lines |
 
 ---
 
