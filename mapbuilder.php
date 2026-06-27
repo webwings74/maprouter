@@ -268,6 +268,15 @@
         }
         .btn-copy:hover { background: #d0dae4; }
         .btn-copy.copied { background: #d5f0e0; color: #1a7a40; }
+        .btn-kml {
+            background: #6d4c41;
+            color: #fff;
+            font-size: 13px;
+            padding: 10px 18px;
+            width: 100%;
+        }
+        .btn-kml:hover { background: #5d4037; }
+        .btn-kml:disabled { opacity: .6; cursor: default; }
 
         /* ── URL preview panel ── */
         #preview-panel {
@@ -436,6 +445,7 @@
         <div id="action-buttons">
             <button class="btn-open" onclick="openMap()">Open in maprouter ↗</button>
             <button class="btn-staticmap" onclick="openStaticMap()">Open in Staticmap ↗</button>
+            <button class="btn-kml" id="kml-btn" onclick="exportKml()">Export as KML</button>
             <button class="btn-copy" id="copy-btn" onclick="copyUrl()">Copy URL</button>
         </div>
         <div id="summary">Add routes and locations using the form on the left.</div>
@@ -925,6 +935,147 @@
             navigator.clipboard.writeText(fullUrl).then(markCopied).catch(fallbackCopy);
         } else {
             fallbackCopy();
+        }
+    }
+
+    // ── KML export ───────────────────────────────────────────────────────────
+
+    /**
+     * Converts a CSS hex color (#rrggbb) or common named color to KML's aabbggrr format.
+     *
+     * @param {string} color
+     * @returns {string} 8-character KML color string
+     */
+    function cssColorToKml(color) {
+        const hex = color.replace('#', '').toLowerCase();
+        if (/^[0-9a-f]{6}$/.test(hex)) {
+            return 'ff' + hex.slice(4, 6) + hex.slice(2, 4) + hex.slice(0, 2);
+        }
+        const named = {
+            navy: 'ff800000', red: 'ff0000ff', green: 'ff008000',
+            orange: 'ff0080ff', purple: 'ff800080', blue: 'ffff0000',
+            teal: 'ff808000', amber: 'ff00a5ff',
+        };
+        return named[hex] || 'ff800000'; // fallback: navy
+    }
+
+    /**
+     * Geocodes a single address string via Nominatim.
+     * Returns { lat, lon, displayName } or throws on failure.
+     *
+     * @param {string} address
+     * @returns {Promise<{lat: number, lon: number, displayName: string}>}
+     */
+    async function geocodeAddress(address) {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+        const r = await fetch(url);
+        if (!r.ok) throw new Error(`Geocoding request failed for "${address}" (HTTP ${r.status})`);
+        const data = await r.json();
+        if (data.length === 0) throw new Error(`Address not found: "${address}"`);
+        return {
+            lat:         parseFloat(data[0].lat),
+            lon:         parseFloat(data[0].lon),
+            displayName: data[0].display_name.split(',')[0],
+        };
+    }
+
+    /**
+     * Geocodes all addresses, then builds and returns a KML document string.
+     * Routes become Folders with Placemarks per stop and a LineString.
+     * Locations become a separate Folder of Placemarks.
+     *
+     * @returns {Promise<string>} KML XML string
+     */
+    async function buildKml() {
+        const titleVal = document.getElementById('opt-title').value.trim();
+        const docName  = esc(titleVal || 'Maprouter export');
+
+        let xml = `<` + `?xml version="1.0" encoding="UTF-8"?>\n`
+                + `<kml xmlns="http://www.opengis.net/kml/2.2">\n`
+                + `<Document>\n<name>${docName}</name>\n`;
+
+        // Routes
+        for (let ri = 0; ri < routes.length; ri++) {
+            const route = routes[ri];
+            const stops = route.stops.filter(s => s.address.trim());
+            if (stops.length === 0) continue;
+
+            const kmlColor = cssColorToKml(route.colors[0] || '#000080');
+            const styleId  = `route${ri}`;
+
+            xml += `<Style id="${styleId}">`
+                 + `<LineStyle><color>${kmlColor}</color><width>4</width></LineStyle>`
+                 + `<PolyStyle><fill>0</fill></PolyStyle>`
+                 + `</Style>\n`;
+            xml += `<Folder><name>${esc(`Route ${ri + 1}`)}</name>\n`;
+
+            const coords = [];
+            for (const stop of stops) {
+                const geo = await geocodeAddress(stop.address);
+                coords.push(geo);
+                const name = esc(stop.text || stop.address);
+                const desc = stop.text ? `<description>${esc(stop.address)}</description>` : '';
+                xml += `<Placemark><name>${name}</name>${desc}`
+                     + `<Point><coordinates>${geo.lon},${geo.lat},0</coordinates></Point>`
+                     + `</Placemark>\n`;
+            }
+
+            if (coords.length > 1) {
+                const coordStr = coords.map(c => `${c.lon},${c.lat},0`).join('\n');
+                xml += `<Placemark><name>${esc(`Route ${ri + 1} line`)}</name>`
+                     + `<styleUrl>#${styleId}</styleUrl>`
+                     + `<LineString><tessellate>1</tessellate><coordinates>${coordStr}</coordinates></LineString>`
+                     + `</Placemark>\n`;
+            }
+
+            xml += `</Folder>\n`;
+        }
+
+        // Standalone locations
+        const validLocs = locations.filter(l => l.address.trim());
+        if (validLocs.length > 0) {
+            xml += `<Folder><name>Locations</name>\n`;
+            for (const loc of validLocs) {
+                const geo  = await geocodeAddress(loc.address);
+                const name = esc(loc.text || loc.address);
+                const desc = loc.text ? `<description>${esc(loc.address)}</description>` : '';
+                xml += `<Placemark><name>${name}</name>${desc}`
+                     + `<Point><coordinates>${geo.lon},${geo.lat},0</coordinates></Point>`
+                     + `</Placemark>\n`;
+            }
+            xml += `</Folder>\n`;
+        }
+
+        xml += `</Document>\n</kml>`;
+        return xml;
+    }
+
+    /**
+     * Triggers geocoding of all stops and downloads the result as a .kml file.
+     */
+    async function exportKml() {
+        if (!buildUrl()) {
+            alert("Please add at least one route stop or location marker first.");
+            return;
+        }
+        const btn = document.getElementById('kml-btn');
+        btn.textContent = "Geocoding…";
+        btn.disabled = true;
+        try {
+            const kml  = await buildKml();
+            const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
+            const a    = document.createElement('a');
+            a.href     = URL.createObjectURL(blob);
+            a.download = 'maprouter-export.kml';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+        } catch (e) {
+            alert("KML export failed: " + e.message);
+        } finally {
+            btn.textContent = "Export as KML";
+            btn.disabled    = false;
         }
     }
 
