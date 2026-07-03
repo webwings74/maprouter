@@ -1054,18 +1054,29 @@
     // ── Actions ──────────────────────────────────────────────────────────────
 
     /**
+     * Converts a page-relative maprouter.php/staticmap.php URL (as returned by
+     * buildUrl()) into an absolute URL rooted at the current origin.
+     *
+     * @param {string} relativeUrl
+     * @returns {string}
+     */
+    function toAbsoluteUrl(relativeUrl) {
+        return window.location.origin + "/" + relativeUrl;
+    }
+
+    /**
      * Opens the generated URL in a new browser tab.
      */
     function openMap() {
         const url = buildUrl();
         if (!url) { alert("Please add at least one route stop or location marker first."); return; }
-        window.open(url, "_blank");
+        window.open(toAbsoluteUrl(url), "_blank");
     }
 
     function openStaticMap() {
         const url = buildUrl();
         if (!url) { alert("Please add at least one route stop or location marker first."); return; }
-        window.open(url.replace(/^maprouter\.php/, "staticmap.php"), "_blank");
+        window.open(toAbsoluteUrl(url.replace(/^maprouter\.php/, "staticmap.php")), "_blank");
     }
 
     /**
@@ -1074,7 +1085,7 @@
     function copyUrl() {
         const url = buildUrl();
         if (!url) { alert("Please add at least one route stop or location marker first."); return; }
-        const fullUrl = window.location.origin + "/" + url;
+        const fullUrl = toAbsoluteUrl(url);
         const btn = document.getElementById("copy-btn");
 
         function markCopied() {
