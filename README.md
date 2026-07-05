@@ -91,26 +91,52 @@ const config = {
     openRouteServiceApiKey: "YOUR_OPENROUTESERVICE_API_KEY"
 };
 ```
+See [API keys](#api-keys) below for where to obtain each key and what the free tiers offer.
 
 ### 4. Configure staticmap.php (optional)
 
-To enable static PNG map images via , create a  file in the same directory:
+To enable static PNG map images via `staticmap.php`, create a `config.php` file in the same directory:
+```php
+<?php
+$mapboxToken = "YOUR_MAPBOX_TOKEN";
+```
 
-
-
-Obtain a free Mapbox token at [mapbox.com](https://mapbox.com). The static map endpoint accepts the same , , and  parameters as  and returns a PNG image.
-
-
+Obtain a free Mapbox token at [mapbox.com](https://mapbox.com) — see [API keys](#api-keys) below. The static map endpoint accepts the same `route`, `location`, and `color` parameters as `maprouter.php` and returns a PNG image.
 
 ### 5. Open the application
-Alternatively, use `mapbuilder.php` to build URLs interactively:
+
+You can build a `maprouter.php` URL by hand, or use one of the two builder tools below.
+
+```
+https://yourdomain.com/maprouter.php?route=[...]&location=[...]&layer=[...]&section=[...]&profile=[...]
+```
+
+**`mapbuilder.php` (recommended).** Browser-based GUI, no installation needed — just open it in a browser. Each route stop has ▲ / ▼ buttons to reorder it within the route, and a 📍 button to move it out to a standalone location marker (if this leaves fewer than two stops in the route, the remaining stop is moved too and the route card is removed). Each location marker has a "move into route" control — pick a target route and position (start/end) and click the button to insert it back into a route as a stop.
+
+**`maprouter-builder.py`.** An interactive Python command-line alternative. It still works correctly, but `mapbuilder.php` is recommended instead for ease of use — it's a visual, no-install GUI with live URL preview, whereas the Python script requires a local Python install and a terminal, and lacks the reorder/move controls described above.
 ```
 python3 maprouter-builder.py
 ```
 Set your domain in the `BASE_URL` constant at the top of the script.
-```
-https://yourdomain.com/maprouter.php?route=[...]&location=[...]&layer=[...]&section=[...]&profile=[...]
-```
+
+---
+
+## API keys
+
+`Nominatim` (geocoding) and the default `OpenStreetMap` tile layer need no key at all — everything else requires a free account. Only sign up for the ones you actually plan to use: skip Tracestrack/Thunderforest entirely if you're happy with the default OSM tiles, and skip Mapbox if you don't need `staticmap.php`.
+
+| Key | Used for | Where to get it | Free tier |
+|---|---|---|---|
+| `openRouteServiceApiKey` | Route calculation (`maprouter.php`) | [openrouteservice.org/dev/#/signup](https://openrouteservice.org/dev/#/signup) — create an account, then generate a key from your dashboard | 2,000 requests/day, 40 requests/minute |
+| `tracestrackApiKey` | Topographic tile layer (`&layer=topo`) | [tracestrack.com](https://tracestrack.com/) — sign up, then find your key on the account/API page | Free tier available (check current limits on their pricing page) |
+| `thunderforestApiKey` | 10 additional tile layers (cycle, transport, outdoors, etc.) | [thunderforest.com](https://www.thunderforest.com/) — sign up, then copy the key from your dashboard | 150,000 tiles/month |
+| Mapbox token (`$mapboxToken` in `config.php`) | Static PNG map images (`staticmap.php` only) | [account.mapbox.com/access-tokens](https://account.mapbox.com/access-tokens/) — sign up, then use the default public token or create a new one | 50,000 requests/month |
+
+**Where each key goes:**
+- `openRouteServiceApiKey`, `tracestrackApiKey`, `thunderforestApiKey` → `config.js` (see [step 3](#3-configure-api-keys) above)
+- Mapbox token → `config.php`, as `$mapboxToken` (see [step 4](#4-configure-staticmapphp-optional) above), only needed if you use `staticmap.php`
+
+**Running out of quota?** If routes stop building or tiles stop loading, you may have hit a provider's rate limit or daily quota. `maprouter.php` shows a popup naming the specific provider (and whether it's a rate limit or quota problem) when this happens, so check for that first before assuming something else is broken.
 
 ---
 
@@ -178,6 +204,13 @@ Add `&table` (no value needed) to show a collapsible side panel with a detailed 
 Point labels use the `text` value if provided, otherwise the geocoded place name, otherwise a numbered fallback ("Point 1", "Point 2", …).
 
 The panel can be toggled open and closed at any time using the button on the left edge of the map.
+
+**Editing controls.** When the panel is open it also lets you rearrange the loaded data on the fly:
+- **Reorder** — use the ▲ / ▼ buttons next to a route point to move it up or down within its route.
+- **Move a route point to a standalone marker** — click the 📍 button next to a point. If this leaves fewer than two points in the route, the remaining point is also moved and the route is removed.
+- **Move a standalone marker into a route** — in the "Location markers" section, pick a target route and position (start/end), then click the move button.
+
+Every change updates the browser's address bar in place (via `history.replaceState`, no page reload) and redraws the map. A **"Copy shareable URL"** button at the top of the panel copies the current, edited URL to the clipboard so it can be saved or shared. Already-geocoded coordinates are reused for edits (no extra Nominatim requests), and OpenRouteService is only re-queried for the route(s) whose point sequence actually changed.
 
 ### `title`
 Sets the browser tab title for the map page. If omitted, the default title "Webwings OpenStreetMap Route" is used.
@@ -265,13 +298,18 @@ https://yourdomain.com/maprouter.php?route=[{"point":"Amsterdam"},{"point":"Utre
 | 2026-06-18 | `mapbuilder.php`: added "Import URL" section — paste any maprouter.php URL to reverse-populate all routes, locations, and options in the sidebar |
 | 2026-06-18 | Added `&title=` parameter — sets the browser tab title; supported in both `maprouter.php` and `mapbuilder.php` |
 | 2026-06-18 | `mapbuilder.php`: fixed URL import — `+` in query strings now correctly decoded as a space |
-| 2026-06-27 | `mapbuilder.php`: added "Export as KML" button — geocodes all stops via Nominatim and downloads a `.kml` file with placemarks and route lines |
+| 2026-07-02 | `maprouter.php`: added a popup naming the provider when a rate limit or quota is hit (OpenRouteService/Nominatim), instead of failing silently |
+| 2026-07-02 | `maprouter.php`: `?table` panel now supports live editing — reorder route points, move a point to a standalone marker and back, with the URL kept in sync and a "Copy shareable URL" button |
+| 2026-07-02 | `mapbuilder.php`: added reorder (▲/▼) and move (📍 / "move into route") controls so stops and location markers can be rearranged before generating the URL |
+| 2026-07-02 | README: clarified that `maprouter-builder.py` still works correctly, but `mapbuilder.php` is recommended for ease of use |
+| 2026-07-02 | Changed licence from MIT to PolyForm Noncommercial 1.0.0 — free for noncommercial use, commercial use requires separate permission |
+| 2026-07-02 | README: added an "API keys" chapter listing every required key, what it's for, where to sign up, and free-tier limits; also fixed a broken paragraph in the `staticmap.php` setup step |
 
 ---
 
 ## Licence
 
-This project is licensed under the MIT Licence.
+This project is licensed under the [PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0). Free to use, modify, and share for any noncommercial purpose; commercial use requires separate permission from the licensor.
 
 Copyright © Richard, Webwings 2025
 
