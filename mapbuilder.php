@@ -355,7 +355,21 @@
             font-weight: 700;
             color: #1a2a3a;
             letter-spacing: .03em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
+        .url-size-badge {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: normal;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: #e4ecf3;
+            color: #5a7a9a;
+        }
+        .url-size-badge.size-warn { background: #fdf0d5; color: #a8710a; }
+        .url-size-badge.size-over { background: #fbdede; color: #b83232; }
         #url-box {
             background: #1a2a3a;
             color: #a8d8f0;
@@ -503,7 +517,7 @@
 
     <!-- ── URL preview panel ── -->
     <div id="preview-panel">
-        <h2>Generated URL</h2>
+        <h2>Generated URL <span id="url-size-badge" class="url-size-badge">0 B</span></h2>
         <div id="url-box"><span class="url-base">https://</span><span style="color:#8fa8c0">— add a route or location to get started —</span></div>
         <div id="action-buttons">
             <button class="btn-open" onclick="openMap()">Open in maprouter ↗</button>
@@ -1012,14 +1026,38 @@
         return MAPROUTER_URL + (parts.length ? "?" + parts.join("&") : "");
     }
 
+    /** Max URL length in bytes before servers/browsers may start rejecting it. */
+    const URL_SIZE_LIMIT = 8192;
+    /** Byte count above which the badge switches to the "warning" color. */
+    const URL_SIZE_WARN  = URL_SIZE_LIMIT * 0.75;
+
+    /**
+     * Updates the byte-size badge next to "Generated URL", color-coded against
+     * the ~8KB URL length limit most servers and browsers enforce.
+     *
+     * @param {HTMLElement} badge
+     * @param {string} fullUrl
+     */
+    function updateUrlSizeBadge(badge, fullUrl) {
+        const bytes = new TextEncoder().encode(fullUrl).length;
+        const label = bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(2)} KB`;
+
+        badge.textContent = bytes > URL_SIZE_LIMIT ? `${label} — over 8KB limit!` : label;
+        badge.classList.toggle("size-over", bytes > URL_SIZE_LIMIT);
+        badge.classList.toggle("size-warn", bytes > URL_SIZE_WARN && bytes <= URL_SIZE_LIMIT);
+    }
+
     /**
      * Rebuilds the URL display and summary panel.
      * Called on every user interaction.
      */
     function updatePreview() {
-        const url    = buildUrl();
-        const urlBox = document.getElementById("url-box");
-        const summary = document.getElementById("summary");
+        const url       = buildUrl();
+        const urlBox    = document.getElementById("url-box");
+        const summary   = document.getElementById("summary");
+        const sizeBadge = document.getElementById("url-size-badge");
+
+        updateUrlSizeBadge(sizeBadge, url ? toAbsoluteUrl(url) : "");
 
         if (!url) {
             urlBox.innerHTML = `<span class="url-base">${MAPROUTER_URL}</span><span style="color:#8fa8c0"> — add a route or location to get started —</span>`;

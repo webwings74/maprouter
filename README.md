@@ -111,7 +111,7 @@ You can build a `maprouter.php` URL by hand, or use one of the two builder tools
 https://yourdomain.com/maprouter.php?route=[...]&location=[...]&layer=[...]&section=[...]&profile=[...]
 ```
 
-**`mapbuilder.php` (recommended).** Browser-based GUI, no installation needed — just open it in a browser. Each route stop has ▲ / ▼ buttons to reorder it within the route, and a 📍 button to move it out to a standalone location marker (if this leaves fewer than two stops in the route, the remaining stop is moved too and the route card is removed). Each location marker has a "move into route" control — pick a target route and position (start/end) and click the button to insert it back into a route as a stop.
+**`mapbuilder.php` (recommended).** Browser-based GUI, no installation needed — just open it in a browser. Each route stop has ▲ / ▼ buttons to reorder it within the route, and a 📍 button to move it out to a standalone location marker (if this leaves fewer than two stops in the route, the remaining stop is moved too and the route card is removed). Each location marker has a "move into route" control — pick a target route and position (start/end) and click the button to insert it back into a route as a stop. A badge next to the generated URL shows its live size in bytes, turning amber and then red as it approaches and passes the ~8KB URL length limit most servers and browsers enforce.
 
 **`maprouter-builder.py`.** An interactive Python command-line alternative. It still works correctly, but `mapbuilder.php` is recommended instead for ease of use — it's a visual, no-install GUI with live URL preview, whereas the Python script requires a local Python install and a terminal, and lacks the reorder/move controls described above.
 ```
@@ -304,6 +304,7 @@ https://yourdomain.com/maprouter.php?route=[{"point":"Amsterdam"},{"point":"Utre
 | 2026-07-02 | README: clarified that `maprouter-builder.py` still works correctly, but `mapbuilder.php` is recommended for ease of use |
 | 2026-07-02 | Changed licence from MIT to PolyForm Noncommercial 1.0.0 — free for noncommercial use, commercial use requires separate permission |
 | 2026-07-02 | README: added an "API keys" chapter listing every required key, what it's for, where to sign up, and free-tier limits; also fixed a broken paragraph in the `staticmap.php` setup step |
+| 2026-09-03 | `mapbuilder.php`: added a live URL size badge next to the generated URL, color-coded as it approaches/exceeds the ~8KB URL length limit |
 
 ---
 
