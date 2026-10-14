@@ -2,6 +2,9 @@
 
 A web application for displaying interactive routes and locations on a map, built on [OpenStreetMap](https://www.openstreetmap.org/) and [Leaflet.js](https://leafletjs.com/). Routes are calculated via the [OpenRouteService](https://openrouteservice.org/) API; locations are geocoded via [Nominatim](https://nominatim.org/). Some tile layers require a free API key.
 
+As of this time I keep this repository on Github and my personal Forgejo server on my
+own NAS.
+
 ## Files in this project
 
 | File | Description |
