@@ -1,0 +1,8 @@
+# Pixelmator-bestanden: geen code, niet meetellen en niet diffen
+*.pxd binary linguist-detectable=false linguist-vendored
+
+# Alle .php-bestanden als PHP tellen (niet als Hack)
+*.php linguist-language=PHP
+
+# Iconenmap niet meetellen in de taalstatistiek
+mapicons/** linguist-vendored
